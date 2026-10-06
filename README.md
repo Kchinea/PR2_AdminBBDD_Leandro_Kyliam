@@ -222,4 +222,4 @@ Para guardar la fecha de ingreso y las bonificaciones, sustituimos Cliente por *
 
 ---
 
-Práctica realizada por Leandro Delli Santi (alu0101584003) y Kyliam Chinea Salcedo (alu0101584003).
+Práctica realizada por Leandro Delli Santi (alu0101584003) y Kyliam Chinea Salcedo (alu0101548050).
