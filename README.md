@@ -1,4 +1,5 @@
 # PR2_AdminBBDD_Leandro_Kyliam
+
 # Modelo entidad/relación: Viveros Tajinaste S.A.
 
 ![Modelo entidad/relación](Practica2ADBD.drawio.png)
@@ -9,15 +10,18 @@
 
 **Vivero.** Cada uno de los viveros de la red de Tajinaste S.A. Se identifica por un código propio y se guarda su georreferenciación.
 
-**Zona.** Cada una de las áreas en las que se divide un vivero (zona exterior, almacén, invernadero...), en las que se almacenan los productos y trabajan los empleados. Tiene su propia georreferenciación. Es una **entidad débil con dependencia en existencia** respecto a Vivero: aunque tiene un identificador propio, una zona no tiene sentido sin el vivero al que pertenece, y si un vivero desaparece, sus zonas también.
+**Zona.** Cada una de las áreas en las que se divide un vivero (zona exterior, almacén, invernadero...), en las que se almacenan los productos, trabajan los empleados y desde las que se sirven los pedidos. Tiene su propia georreferenciación. Es una **entidad débil con dependencia en existencia** respecto a Vivero: aunque tiene un identificador propio, una zona no tiene sentido sin el vivero al que pertenece, y si un vivero desaparece, sus zonas también.
 
 **Producto.** Cada uno de los artículos que vende la empresa: plantas, productos de jardinería y artículos de decoración.
 
-**Empleado.** Cada una de las personas que trabajan en la empresa y que son destinadas a las zonas de los viveros.
+**Empleado.** Cada una de las personas que trabajan en la empresa, que son destinadas a las zonas de los viveros y que gestionan los pedidos.
 
-**Pedido.** Cada uno de los pedidos realizados por los clientes del programa Tajinaste Plus. Se modela como entidad porque tiene identidad propia (un número de pedido) y datos propios, y porque se relaciona de forma independiente con el empleado responsable y con el cliente.
+**Pedido.** Cada uno de los pedidos realizados por los clientes. Se modela como entidad porque tiene identidad propia (un número de pedido) y datos propios, y porque se relaciona de forma independiente con el empleado responsable, el cliente, los productos que contiene y la zona desde la que se sirve.
 
-**Cliente_Plus.** Cada uno de los clientes que pertenecen al programa de fidelización Tajinaste Plus. El modelo solo contempla clientes del programa, ya que el enunciado no requiere información de los demás clientes.
+**Cliente.** Cada uno de los clientes de la empresa, pertenezcan o no al programa de fidelización. Es la entidad general de una jerarquía con dos subtipos:
+
+- **Básico.** Clientes que no pertenecen al programa Tajinaste Plus. No tienen atributos propios, pero se registran sus pedidos para conocer las ventas y la salida de productos.
+- **Plus.** Clientes que pertenecen al programa Tajinaste Plus. Tienen una fecha de ingreso en el programa y reciben bonificaciones mensuales.
 
 ## Atributos y dominios
 
@@ -44,6 +48,7 @@
 | `id_producto` | Identificador | Código único del producto | Número entero positivo | 1, 230, 1504 |
 | `nombre` | Descriptor | Nombre comercial del producto | Texto | "Rosal trepador", "Saco de sustrato 50 L", "Maceta de barro" |
 | `tipo` | Descriptor | Categoría del producto | {planta, jardinería, decoración} | "planta", "decoración" |
+| `precio` | Descriptor | Precio de venta por unidad, en euros | Número decimal mayor que 0, con dos decimales | 12.95, 4.50 |
 
 ### Empleado
 
@@ -51,6 +56,7 @@
 |---|---|---|---|---|
 | `id_empleado` | Identificador | Código único del empleado | Número entero positivo | 1, 23, 108 |
 | `nombre` | Descriptor | Nombre y apellidos del empleado | Texto | "Ana Pérez González" |
+| `productividad` | Derivado | Medida de la actividad del empleado, calculada a partir de los pedidos que gestiona y de sus destinos | Número decimal mayor o igual que 0 | 1450.75 (euros vendidos en un periodo) |
 
 ### Pedido
 
@@ -58,16 +64,26 @@
 |---|---|---|---|---|
 | `id_pedido` | Identificador | Número único del pedido | Número entero positivo | 1532, 1533 |
 | `fecha` | Descriptor | Fecha en la que se realizó el pedido | Fecha (AAAA-MM-DD) | 2026-03-15 |
-| `precio` | Descriptor | Importe total del pedido, en euros | Número decimal mayor o igual que 0, con dos decimales | 45.90, 120.00 |
 
-### Cliente_Plus
+El importe total de un pedido no se guarda como atributo, ya que se obtiene a partir de los productos que contiene, sus cantidades y su precio.
+
+### Cliente
 
 | Atributo | Tipo | Descripción | Dominio | Ejemplos |
 |---|---|---|---|---|
 | `id_cliente` | Identificador | Código único del cliente | Número entero positivo | 1, 87, 2301 |
 | `nombre` | Descriptor | Nombre y apellidos del cliente | Texto | "Luis Martín Díaz" |
+
+### Plus
+
+| Atributo | Tipo | Descripción | Dominio | Ejemplos |
+|---|---|---|---|---|
 | `fecha_ingreso` | Descriptor | Fecha de alta en el programa Tajinaste Plus | Fecha (AAAA-MM-DD) | 2024-11-02 |
-| `bonificaciones` | Multivaluado | Bonificaciones asignadas cada mes según el volumen de compras, en euros | Conjunto de números decimales mayores o iguales que 0 | {5.00, 12.50, 8.75} |
+| `bonificaciones` | Derivado | Bonificación del cliente para un mes, calculada a partir del volumen de compras de sus pedidos en ese mes | Número decimal mayor o igual que 0, con dos decimales, en euros | 5.00, 12.50 |
+
+Básico no tiene atributos propios. Ambos subtipos heredan los atributos de Cliente.
+
+Las bonificaciones no se almacenan: se obtienen a partir de los pedidos que el cliente ha realizado en cada mes, de sus productos, cantidades y precios. Como los pedidos se guardan con su fecha, se puede calcular la bonificación de cualquier mes, tanto el actual como los anteriores.
 
 ### Atributos de las relaciones
 
@@ -77,6 +93,7 @@
 | Tarea | `fecha_fin` | Descriptor | Fecha en la que termina el destino. Vacía si el destino sigue vigente | Fecha (AAAA-MM-DD) o vacío | 2026-09-30 |
 | Tarea | `tipo_de_tarea` | Descriptor | Tarea o puesto que desempeña el empleado durante ese destino | Texto | "riego", "atención al cliente", "caja", "carga y descarga" |
 | Tiene | `cantidad` | Descriptor | Unidades disponibles de un producto en una zona | Número entero mayor o igual que 0 | 0, 25, 340 |
+| De | `cantidad` | Descriptor | Unidades de un producto incluidas en un pedido | Número entero mayor que 0 | 1, 3, 20 |
 
 ## Relaciones y cardinalidades
 
@@ -116,23 +133,51 @@ Indica qué empleado es responsable de cada pedido, para medir su capacidad de l
 - Un empleado gestiona como mínimo 0 pedidos y como máximo varios → **(0,n)** junto a Pedido. Puede haber empleados que no gestionen pedidos.
 - Cardinalidad **1:N**.
 
-### Hace (Cliente_Plus – Pedido) · 1:N
+### Hace (Cliente – Pedido) · 1:N
 
-Indica qué cliente del programa ha realizado cada pedido, para poder realizar campañas entre los clientes Tajinaste Plus.
+Indica qué cliente ha realizado cada pedido. Se relaciona con la entidad general Cliente para registrar las ventas de todos los clientes, sean o no del programa Tajinaste Plus.
 
-- Un pedido es realizado como mínimo por 1 cliente y como máximo por 1 → **(1,1)** junto a Cliente_Plus.
-- Un cliente realiza como mínimo 0 pedidos y como máximo varios → **(0,n)** junto a Pedido. Un cliente recién incorporado al programa puede no haber hecho todavía ningún pedido.
+- Un pedido es realizado como mínimo por 1 cliente y como máximo por 1 → **(1,1)** junto a Cliente.
+- Un cliente realiza como mínimo 0 pedidos y como máximo varios → **(0,n)** junto a Pedido. Un cliente recién registrado puede no haber hecho todavía ningún pedido.
 - Cardinalidad **1:N**.
+
+### De (Pedido – Producto) · N:M
+
+Indica qué productos contiene cada pedido y en qué cantidad. Su atributo `cantidad` depende de la combinación de pedido y producto, ya que un mismo producto puede pedirse en cantidades distintas en cada pedido. Junto con la relación En, permite saber qué productos han salido de cada zona.
+
+- Un pedido contiene como mínimo 1 producto y como máximo varios → **(1,n)** junto a Producto.
+- Un producto aparece como mínimo en 0 pedidos y como máximo en varios → **(0,n)** junto a Pedido. Un producto puede no haberse vendido todavía.
+- Cardinalidad **N:M**.
+
+### En (Pedido – Zona) · 1:N
+
+Indica desde qué zona se sirve cada pedido, para conocer de dónde salen los productos vendidos. Se relaciona con la zona y no con el vivero porque el stock se controla por zonas, y el vivero se obtiene a partir de la zona.
+
+- Un pedido se sirve como mínimo desde 1 zona y como máximo desde 1 → **(1,1)** junto a Zona.
+- Desde una zona se sirven como mínimo 0 pedidos y como máximo varios → **(0,n)** junto a Pedido.
+- Cardinalidad **1:N**.
+
+### Jerarquía de Cliente · total y exclusiva
+
+Cliente se divide en los subtipos **Básico** y **Plus**.
+
+- **Total:** todo cliente pertenece a uno de los dos subtipos; no hay clientes de otro tipo.
+- **Exclusiva:** un cliente no puede ser Básico y Plus a la vez.
+- Cada cliente pertenece a un único subtipo → **(1,1)** junto a Cliente; cada ocurrencia de Cliente aparece como mucho una vez en cada subtipo → **(0,1)** junto a los subtipos.
+
+Los atributos comunes (`id_cliente`, `nombre`) y la relación Hace pertenecen a Cliente, mientras que `fecha_ingreso` y el atributo derivado `bonificaciones` son propios de Plus.
 
 ## Restricciones semánticas
 
-Algunas reglas del enunciado no se pueden expresar con las cardinalidades del diagrama, por lo que las recogemos como restricciones semánticas:
+Algunas reglas no se pueden expresar con las cardinalidades del diagrama, por lo que las recogemos como restricciones semánticas:
 
 - **Un empleado no puede tener dos destinos a la vez.** Los periodos (`fecha_inicio`, `fecha_fin`) de la relación Tarea de un mismo empleado no pueden solaparse. Las cardinalidades solo reflejan el total a lo largo del tiempo, por lo que no pueden impedir dos destinos simultáneos.
 - **La fecha de fin de un destino no puede ser anterior a su fecha de inicio.** Si la fecha de fin está vacía, el destino sigue vigente.
-- **Los pedidos registrados son posteriores al ingreso del cliente en el programa.** La fecha de un pedido debe ser igual o posterior a la `fecha_ingreso` del cliente, ya que el enunciado indica que los pedidos se controlan desde su ingreso en Tajinaste Plus.
-- **La cantidad de un producto en una zona no puede ser negativa.**
-- **Las bonificaciones no pueden ser negativas.**
+- **Las bonificaciones solo se calculan a partir del ingreso en el programa.** Para calcular las bonificaciones de un cliente Plus solo se tienen en cuenta los meses a partir de su `fecha_ingreso`.
+- **La regla de cálculo de las bonificaciones es fija.** El atributo derivado `bonificaciones` supone que la bonificación se obtiene siempre con el mismo criterio a partir del volumen de compras mensual. Si la empresa cambiara el criterio con el tiempo, o asignara bonificaciones que no dependieran solo de los pedidos, habría que almacenarlas (por ejemplo, como una entidad débil Bonificación con el mes como discriminante).
+- **Las campañas de Tajinaste Plus se basan en los pedidos posteriores al ingreso.** Para un cliente Plus, solo se tienen en cuenta los pedidos con fecha igual o posterior a su `fecha_ingreso`, ya que el enunciado indica que se controlan desde su ingreso en el programa.
+- **Un pedido no puede incluir más unidades de las disponibles.** La `cantidad` de un producto en un pedido no puede superar la `cantidad` disponible de ese producto en la zona desde la que se sirve el pedido.
+- **Las cantidades y precios no pueden ser negativos.** La cantidad de stock y las bonificaciones son mayores o iguales que 0; el precio de los productos y la cantidad de cada producto en un pedido, mayores que 0.
 
 # Desarrollo del modelo
 
@@ -163,7 +208,7 @@ Después nos planteamos si Zona debía ser una entidad débil, ya que una zona n
 - **Dependencia en identificación:** la zona se identificaría por un discriminante (como "Almacén", que se repite en varios viveros pero no dentro del mismo) junto con el identificador del vivero.
 - **Dependencia en existencia:** la zona mantiene su propio identificador, pero no tiene sentido sin el vivero al que pertenece.
 
-Elegimos la **dependencia en existencia**: Zona conserva su identificador propio `id_zona`, lo que simplifica su uso en el resto de relaciones (Tarea y Tiene), y la dependencia de su vivero queda reflejada como entidad débil y con la marca **E** en la relación Está en.
+Elegimos la **dependencia en existencia**: Zona conserva su identificador propio `id_zona`, lo que simplifica su uso en el resto de relaciones (Tarea, Tiene y En), y la dependencia de su vivero queda reflejada como entidad débil y con la marca **E** en la relación Está en.
 
 ## 4. El stock como relación
 
@@ -204,24 +249,42 @@ Nuestro primer intento fue mantener **Compra** como relación entre Empleado y C
 
 En un intento posterior pusimos participaciones **(1,1)** en ambos lados de Compra con cardinalidad **1:1**, pero eso significaba que cada empleado gestionaba un único pedido en toda su vida y cada cliente compraba una sola vez. También llegamos a marcar `fecha` y `precio` como identificadores, aunque el precio no identifica nada.
 
-La clave fue entender la diferencia entre una **relación** (un vínculo entre elementos) y una **entidad** (algo con identidad propia a lo que se puede señalar). Un pedido tiene número, fecha e importe, y se puede hablar de "el pedido 1532": es una entidad. Al convertir **Pedido** en entidad con su propio identificador `id_pedido`, la relación Compra se separó en dos:
+La clave fue entender la diferencia entre una **relación** (un vínculo entre elementos) y una **entidad** (algo con identidad propia a lo que se puede señalar). Un pedido tiene número y fecha, y se puede hablar de "el pedido 1532": es una entidad. Al convertir **Pedido** en entidad con su propio identificador `id_pedido`, la relación Compra se separó en dos:
 
 - **Gestiona**, entre Empleado y Pedido, con cardinalidad **1:N**: un pedido tiene exactamente un responsable (1,1) y un empleado puede gestionar muchos pedidos.
 - **Hace**, entre Cliente y Pedido, con cardinalidad **1:N**: un pedido pertenece a un único cliente (1,1) y un cliente puede hacer muchos pedidos.
 
 Así, la condición de un único responsable deja de ser un problema de claves y pasa a expresarse directamente con la participación máxima 1 del lado del empleado.
 
-## 8. Los clientes Tajinaste Plus
+## 8. Los clientes Tajinaste Plus (primera versión)
 
-Nuestro modelo recogía la pertenencia al programa con el atributo `es_plus`, pero con la relación Hace conectada a todos los clientes el modelo permitía registrar pedidos de clientes que no son Plus, mientras que el enunciado solo controla los pedidos de los clientes del programa. Además, faltaban datos que el enunciado menciona: la **fecha de ingreso** en el programa y las **bonificaciones mensuales**.
+Nuestro modelo recogía la pertenencia al programa con el atributo `es_plus`, pero eso no permitía guardar los datos propios del programa: la **fecha de ingreso** y las **bonificaciones mensuales**.
 
-Nos surgió la duda de si sería necesario guardar los pedidos de todos los clientes para controlar el stock. Concluimos que el stock que pide el enunciado es la cantidad disponible de cada producto en cada zona, que ya recoge la relación Tiene, y que nuestros pedidos no están relacionados con los productos, por lo que guardar los pedidos de todos los clientes no aportaría información sobre el stock.
+Planteamos dos alternativas: que el modelo solo contemplara clientes Plus, o una jerarquía con Cliente como entidad general y Cliente Plus como subtipo. En esta primera versión elegimos la primera: el enunciado solo menciona datos y relaciones de los clientes Plus, y nuestros pedidos no estaban relacionados con los productos, así que guardar los pedidos del resto de clientes no parecía aportar nada. Sustituimos Cliente por **Cliente_Plus**, eliminamos `es_plus` y representamos las bonificaciones como un **atributo multivaluado**.
 
-Planteamos dos alternativas: que el modelo solo contemple clientes Plus, o una jerarquía con Cliente como entidad general y Cliente Plus como subtipo con la fecha de ingreso, las bonificaciones y la relación con los pedidos.
+Esta decisión se revisó después con el profesor (apartado 9).
 
-Elegimos la primera opción: el modelo **solo contempla clientes del programa Tajinaste Plus**. El enunciado no pide guardar ninguna información de los clientes que no pertenecen al programa, así que una jerarquía habría añadido una entidad general sin atributos ni relaciones propias. Por ello sustituimos la entidad Cliente por **Cliente_Plus** y eliminamos el atributo `es_plus`, que ya no aportaba nada porque todos los clientes del modelo lo son. Como consecuencia, la relación **Hace** solo admite pedidos de clientes Plus, que es justo lo que indica el enunciado.
+## 9. Revisión con el profesor
 
-A esta entidad le añadimos los datos propios del programa:
+Con el modelo terminado, antes de pasar al modelo relacional, consultamos con el profesor varias dudas. A raíz de sus indicaciones hicimos los siguientes cambios.
 
-- **Fecha de ingreso** en el programa, necesaria porque los pedidos se controlan "desde su ingreso en el programa".
-- **Bonificaciones**, que se asignan mensualmente en función del volumen de compras. Como un mismo cliente acumula una bonificación por cada mes, las representamos como un **atributo multivaluado**.
+**Bonificaciones como atributo derivado.** Al representar las bonificaciones como un atributo multivaluado ya habíamos detectado que se perdía a qué mes correspondía cada una. Con el profesor valoramos varias alternativas: un atributo multivaluado compuesto (mes e importe), una entidad débil **Bonificación** identificada por el cliente y el periodo (año y mes), o un **atributo derivado**.
+
+Elegimos el atributo derivado. El enunciado indica que las bonificaciones se asignan *"en función del volumen de compras que ha realizado mensualmente"*, es decir, dependen de los pedidos. Como tras la revisión los pedidos se guardan con su fecha, sus productos y sus cantidades, la bonificación de cualquier mes se puede calcular a partir de ellos, y almacenarla supondría guardar un dato redundante que podría contradecir a los pedidos. Esta decisión se basa en el supuesto de que el criterio de cálculo es fijo, que recogemos como restricción semántica; si no lo fuera, la opción adecuada sería la entidad débil Bonificación.
+
+**Todos los clientes, con herencia.** El profesor nos indicó que debían aparecer todos los clientes, y que la pertenencia al programa no se representa con un atributo, sino con una jerarquía. Creamos la entidad general **Cliente** con los subtipos **Básico** y **Plus**, en una jerarquía **total y exclusiva**: todo cliente es de uno de los dos tipos, y no puede ser de ambos a la vez. La fecha de ingreso y las bonificaciones quedan en Plus, y la relación Hace pasa a salir de Cliente para registrar las ventas de todos los clientes.
+
+**Pedidos conectados con los productos.** El profesor nos explicó que debíamos pensar en qué modelo sería más beneficioso para la empresa, y que lo mejor era tener todo conectado para saber de dónde salen los productos. Añadimos dos relaciones a Pedido:
+
+- **De**, entre Pedido y Producto (N:M), con el atributo `cantidad`, para saber qué productos y cuántas unidades incluye cada pedido.
+- **En**, entre Pedido y Zona (1:N), para saber desde dónde se sirve cada pedido.
+
+Valoramos conectar el pedido con el vivero, pero elegimos la zona porque el stock se controla por zonas, y así se puede relacionar cada venta con el stock disponible en el lugar del que sale. El vivero se obtiene a partir de la zona. Antes de esto también valoramos deducirlo del destino del empleado responsable en la fecha del pedido, pero lo descartamos por ser una deducción indirecta y poco fiable: el empleado podría gestionar un pedido que se sirve desde otro lugar.
+
+Como consecuencia, el `precio` pasó de Pedido a Producto, como precio por unidad, y el importe total del pedido dejó de guardarse, porque se obtiene a partir de los productos, sus cantidades y sus precios.
+
+**Productividad.** La productividad de zonas y empleados se obtiene combinando la relación Tarea (en qué zona estaba cada empleado y cuándo) con los pedidos que gestiona cada empleado y sus fechas. En el caso del empleado la representamos como **atributo derivado** `productividad`, ya que no se almacena, sino que se calcula a partir de esa información.
+
+---
+
+Práctica realizada por Leandro Delli Santi (alu0101584003) y Kyliam Chinea Salcedo (alu0101548050).
