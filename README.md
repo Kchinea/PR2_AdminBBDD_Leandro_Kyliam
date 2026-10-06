@@ -8,11 +8,11 @@
 
 ## Entidades
 
-**Vivero.** Cada uno de los viveros de la red de Tajinaste S.A. Se identifica por un código propio y se guarda su georreferenciación.
+**Vivero.** Cada uno de los viveros de la red de Tajinaste S.A. Se identifica por un código propio y se guarda su georreferenciación (latitud y longitud).
 
-**Zona.** Cada una de las áreas en las que se divide un vivero (zona exterior, almacén, invernadero...), en las que se almacenan los productos, trabajan los empleados y desde las que se sirven los pedidos. Tiene su propia georreferenciación. Es una **entidad débil con dependencia en existencia** respecto a Vivero: aunque tiene un identificador propio, una zona no tiene sentido sin el vivero al que pertenece, y si un vivero desaparece, sus zonas también.
+**Zona.** Cada una de las áreas en las que se divide un vivero (zona exterior, almacén, invernadero...), en las que se almacenan los productos, trabajan los empleados y desde las que se sirven los pedidos. Tiene su propia georreferenciación. Es una **entidad débil con dependencia en existencia** respecto a Vivero: aunque tiene un identificador propio.
 
-**Producto.** Cada uno de los artículos que vende la empresa: plantas, productos de jardinería y artículos de decoración.
+**Producto.** Cada uno de las referencias que vende la empresa: plantas, productos de jardinería y artículos de decoración.
 
 **Empleado.** Cada una de las personas que trabajan en la empresa, que son destinadas a las zonas de los viveros y que gestionan los pedidos.
 
@@ -178,112 +178,47 @@ Algunas reglas no se pueden expresar con las cardinalidades del diagrama, por lo
 - **Las campañas de Tajinaste Plus se basan en los pedidos posteriores al ingreso.** Para un cliente Plus, solo se tienen en cuenta los pedidos con fecha igual o posterior a su `fecha_ingreso`, ya que el enunciado indica que se controlan desde su ingreso en el programa.
 - **Un pedido no puede incluir más unidades de las disponibles.** La `cantidad` de un producto en un pedido no puede superar la `cantidad` disponible de ese producto en la zona desde la que se sirve el pedido.
 - **Las cantidades y precios no pueden ser negativos.** La cantidad de stock y las bonificaciones son mayores o iguales que 0; el precio de los productos y la cantidad de cada producto en un pedido, mayores que 0.
+ 
+ # Desarrollo del modelo
 
-# Desarrollo del modelo
-
-En este apartado explicamos cómo hemos ido construyendo el modelo: cómo interpretamos el enunciado, qué decisiones tomamos, qué errores cometimos por el camino y cómo los corregimos.
+Resumen de cómo construimos el modelo, las dudas que surgieron y cómo las resolvimos.
 
 ## 1. Primer planteamiento
 
-En la primera lectura identificamos tres entidades: **Vivero**, **Empleado** y **Cliente**, unidas por una única relación **Compra** en la que participaban el vivero, la zona, el empleado que gestionaba la venta y el cliente, con una fecha. Para distinguir a los clientes del programa de fidelización añadimos un atributo booleano `es_plus`. Nuestra idea era que, con este esquema, cualquier información que pidiera el enunciado se podría obtener después con vistas y consultas con `JOIN`.
+Empezamos con tres entidades (**Vivero**, **Empleado** y **Cliente**) unidas por una única relación **Compra**, y un atributo `es_plus` para los clientes del programa. La idea era sacar después todo con consultas y `JOIN`.
 
-Este planteamiento tenía un error de enfoque: estábamos pensando en el **nivel lógico** (tablas y consultas) en lugar de en el **nivel conceptual**. El modelo E/R no consiste en preguntarse qué se podrá calcular después, sino en representar fielmente qué cosas existen en el mundo real y cómo se relacionan. Al meter todo en una sola relación mezclábamos hechos que en la realidad son independientes: por ejemplo, un empleado está destinado en una zona aunque no gestione ninguna venta, y con nuestro modelo un empleado sin ventas no habría estado destinado en ningún sitio.
+El error era de enfoque: pensábamos en el **nivel lógico** (tablas y consultas) en lugar del **conceptual**, que debe representar qué existe en la realidad y cómo se relaciona. Además, mezclábamos hechos independientes: un empleado está destinado en una zona aunque no venda nada. También habíamos olvidado el objetivo principal del enunciado: el **stock** de cada producto en cada zona.
 
-## 2. Lo que faltaba: el stock
+## 2. Vivero, Zona y stock
 
-Al releer el enunciado vimos que habíamos olvidado su objetivo principal: la empresa quiere "llevar un control del **stock** en los viveros" y saber "de cada producto **cuánto hay disponible en cada zona**". En nuestro primer modelo no existían ni los productos ni las zonas como elementos propios.
+Descartamos meter viveros y zonas en una sola entidad, porque ambos tienen su propia georreferenciación, un vivero tiene varias zonas y la zona se relaciona con otras entidades. Las separamos con la relación **Está en** (1:N).
 
-## 3. Vivero y Zona
+Para Zona dudamos entre dependencia en identificación (un discriminante como "Almacén" dentro de su vivero) y en existencia. Elegimos **existencia**: mantiene su propio `id_zona`, lo que simplifica las relaciones Tarea, Tiene y En.
 
-Nuestra segunda idea fue una única entidad Vivero que guardara a la vez los viveros, sus zonas y la latitud y longitud de cada zona. La descartamos por tres motivos:
+El stock no es una cosa con identidad propia, sino la cantidad de un producto en una zona, que depende de la combinación de ambos. Por eso es la relación **Tiene** (N:M) con el atributo `cantidad`. En una versión pusimos `cantidad` en Producto, lo que habría dado una única cantidad para toda la empresa.
 
-- El enunciado indica que **tanto el vivero como cada zona** tienen su propia georreferenciación, por lo que no quedaba claro de quién era cada latitud.
-- Un vivero tiene **varias** zonas, lo que obligaba a repetir los datos del vivero o a convertir la zona en un atributo multivaluado.
-- La zona **se relaciona con otras entidades**: en ella se almacenan productos y trabajan empleados.
+## 3. Empleados y destinos
 
-Aplicando el criterio de que algo con datos propios y que se relaciona con otros elementos es una entidad, separamos **Vivero** y **Zona** en dos entidades unidas por la relación **Está en**, con cardinalidad **1:N** (una zona pertenece a un único vivero y un vivero tiene una o varias zonas).
+Al principio entendimos que un empleado podía estar en varias zonas a la vez. Era al revés: **a lo largo del tiempo** pasa por varios viveros, pero **en cada momento** solo está en uno, y dentro de él en una zona. El *"histórico del puesto"* obliga a guardar todos los destinos.
 
-Después nos planteamos si Zona debía ser una entidad débil, ya que una zona no existe sin su vivero. Valoramos dos opciones:
+Lo modelamos con la relación **Tarea** (N:M) entre Empleado y Zona, con `fecha_inicio`, `fecha_fin` y `tipo_de_tarea`. Como un empleado puede volver a la misma zona otra temporada, la `fecha_inicio` forma parte de la identificación. Que no tenga dos destinos a la vez no se puede dibujar, así que es una restricción semántica.
 
-- **Dependencia en identificación:** la zona se identificaría por un discriminante (como "Almacén", que se repite en varios viveros pero no dentro del mismo) junto con el identificador del vivero.
-- **Dependencia en existencia:** la zona mantiene su propio identificador, pero no tiene sentido sin el vivero al que pertenece.
+## 4. Pedidos
 
-Elegimos la **dependencia en existencia**: Zona conserva su identificador propio `id_zona`, lo que simplifica su uso en el resto de relaciones (Tarea, Tiene y En), y la dependencia de su vivero queda reflejada como entidad débil y con la marca **E** en la relación Está en.
+Intentamos modelar **Compra** como relación identificada por empleado, cliente y fecha, pero no garantizaba un único responsable ni permitía dos pedidos de un cliente el mismo día. Probamos también (1,1) en ambos lados, que significaba un solo pedido por empleado y por cliente en toda su vida.
 
-## 4. El stock como relación
+La solución fue ver que un pedido es una **entidad** (tiene número propio). Así, Compra se dividió en **Gestiona** (Empleado–Pedido, 1:N) y **Hace** (Cliente–Pedido, 1:N), y el único responsable se expresa con la participación máxima 1 del lado del empleado.
 
-Inicialmente pensamos en el stock como una tabla con producto, cantidad e identificador de zona. Al razonarlo en términos conceptuales, vimos que el stock no es una cosa con identidad propia, sino la información de "cuánto hay de este producto en esta zona". La cantidad no depende solo del producto ni solo de la zona, sino de la **combinación** de ambos. Por eso lo modelamos como la relación **Tiene** entre **Zona** y **Producto**, con el atributo propio `cantidad`, y cardinalidad **N:M**: una zona puede albergar muchos productos y un producto puede estar en muchas zonas.
+## 5. Clientes Plus (primera versión)
 
-En una de las versiones del diagrama colocamos `cantidad` como atributo de Producto. Lo corregimos, ya que así habría representado una única cantidad para cada producto en toda la empresa, en lugar de la cantidad disponible en cada zona.
+Para guardar la fecha de ingreso y las bonificaciones, sustituimos Cliente por **Cliente_Plus** y representamos las bonificaciones como atributo multivaluado, pensando que solo interesaban los clientes del programa. Lo revisamos después con el profesor.
 
-## 5. Errores de notación en los primeros diagramas
+## 6. Revisión con el profesor
 
-En los primeros diagramas cometimos varios errores que fuimos corrigiendo:
-
-- **Poníamos claves foráneas como atributos de las relaciones** (`id_empleado`, `id_cliente` e `id_vivero` dentro de los rombos). En el E/R, la línea que une una relación con una entidad ya indica quién participa; en una relación solo deben aparecer sus atributos propios. Los identificadores se movieron a sus entidades.
-- **`id_vivero` en la relación de los empleados era además redundante**: el empleado trabaja en una zona y la zona ya pertenece a un vivero, así que guardar también el vivero podía dar lugar a datos contradictorios.
-- **Unimos Zona y Vivero con una línea sin rombo.** Entre dos entidades siempre debe haber una relación con nombre.
-- **Usábamos "M:M" y "1:M"** en lugar de la notación correcta **N:M** y **1:N**.
-- **Nombrábamos entidades en plural** ("Productos"), cuando una entidad representa un tipo de elemento, por lo que debe ir en singular.
-
-## 6. Los empleados y el histórico de destinos
-
-El párrafo de los empleados fue el que más nos costó entender. En un primer momento lo interpretamos como que un empleado podía estar en varias zonas a la vez, siempre que fueran de viveros distintos. Era justo al revés:
-
-- *"Pueden ser destinados a diferentes viveros según la época del año"* significa que, **a lo largo del tiempo**, un empleado pasa por varios viveros.
-- *"Nunca van a tener dos destinos"* significa que, **en un momento dado**, solo está en un vivero.
-- *"En cada vivero que desempeñe una tarea lo hará en una zona"* significa que, en cada destino, trabaja en una única zona.
-- El *"seguimiento del histórico del puesto"* obliga a guardar todos los destinos pasados, no solo el actual, para poder relacionar la productividad de cada zona y de cada empleado con quién trabajaba allí en cada momento.
-
-Con esta interpretación modelamos la relación **Tarea** entre **Empleado** y **Zona** con los atributos `fecha_inicio`, `fecha_fin` y `tipo_de_tarea`. Este último recoge la tarea o puesto que desempeña el empleado en ese periodo, que eran las dos palabras que el enunciado destacaba. Como el modelo guarda el histórico, la cardinalidad se razona a lo largo del tiempo: un empleado trabaja en muchas zonas y una zona tiene muchos empleados, es decir, **N:M**.
-
-Al analizarla detectamos un caso que había que tener en cuenta: un mismo empleado puede volver a la misma zona en otra temporada, de forma que la misma pareja empleado-zona aparece más de una vez. Lo que distingue un destino de otro es la **fecha de inicio**, por lo que la marcamos como parte de la identificación de la relación.
-
-La condición de que un empleado nunca tenga dos destinos a la vez no se puede expresar con cardinalidades, porque estas solo reflejan el total a lo largo del tiempo, así que la recogemos como restricción semántica.
-
-## 7. Los pedidos
-
-Esta fue la parte a la que más vueltas le dimos. El enunciado indica que se controlan los pedidos que gestiona cada empleado, *"teniendo en cuenta que cada pedido sólo tiene un responsable"*.
-
-Nuestro primer intento fue mantener **Compra** como relación entre Empleado y Cliente, pensando en identificarla por empleado, cliente y fecha. Al comprobarlo con filas de ejemplo vimos el problema: dos filas con el mismo cliente y la misma fecha pero distinto empleado podían ser dos pedidos distintos o el mismo pedido con dos responsables, y no había forma de saberlo. Si quitábamos el empleado de la identificación, garantizábamos un solo responsable, pero entonces un cliente no podía hacer dos pedidos el mismo día, algo que sí puede ocurrir.
-
-En un intento posterior pusimos participaciones **(1,1)** en ambos lados de Compra con cardinalidad **1:1**, pero eso significaba que cada empleado gestionaba un único pedido en toda su vida y cada cliente compraba una sola vez. También llegamos a marcar `fecha` y `precio` como identificadores, aunque el precio no identifica nada.
-
-La clave fue entender la diferencia entre una **relación** (un vínculo entre elementos) y una **entidad** (algo con identidad propia a lo que se puede señalar). Un pedido tiene número y fecha, y se puede hablar de "el pedido 1532": es una entidad. Al convertir **Pedido** en entidad con su propio identificador `id_pedido`, la relación Compra se separó en dos:
-
-- **Gestiona**, entre Empleado y Pedido, con cardinalidad **1:N**: un pedido tiene exactamente un responsable (1,1) y un empleado puede gestionar muchos pedidos.
-- **Hace**, entre Cliente y Pedido, con cardinalidad **1:N**: un pedido pertenece a un único cliente (1,1) y un cliente puede hacer muchos pedidos.
-
-Así, la condición de un único responsable deja de ser un problema de claves y pasa a expresarse directamente con la participación máxima 1 del lado del empleado.
-
-## 8. Los clientes Tajinaste Plus (primera versión)
-
-Nuestro modelo recogía la pertenencia al programa con el atributo `es_plus`, pero eso no permitía guardar los datos propios del programa: la **fecha de ingreso** y las **bonificaciones mensuales**.
-
-Planteamos dos alternativas: que el modelo solo contemplara clientes Plus, o una jerarquía con Cliente como entidad general y Cliente Plus como subtipo. En esta primera versión elegimos la primera: el enunciado solo menciona datos y relaciones de los clientes Plus, y nuestros pedidos no estaban relacionados con los productos, así que guardar los pedidos del resto de clientes no parecía aportar nada. Sustituimos Cliente por **Cliente_Plus**, eliminamos `es_plus` y representamos las bonificaciones como un **atributo multivaluado**.
-
-Esta decisión se revisó después con el profesor (apartado 9).
-
-## 9. Revisión con el profesor
-
-Con el modelo terminado, antes de pasar al modelo relacional, consultamos con el profesor varias dudas. A raíz de sus indicaciones hicimos los siguientes cambios.
-
-**Bonificaciones como atributo derivado.** Al representar las bonificaciones como un atributo multivaluado ya habíamos detectado que se perdía a qué mes correspondía cada una. Con el profesor valoramos varias alternativas: un atributo multivaluado compuesto (mes e importe), una entidad débil **Bonificación** identificada por el cliente y el periodo (año y mes), o un **atributo derivado**.
-
-Elegimos el atributo derivado. El enunciado indica que las bonificaciones se asignan *"en función del volumen de compras que ha realizado mensualmente"*, es decir, dependen de los pedidos. Como tras la revisión los pedidos se guardan con su fecha, sus productos y sus cantidades, la bonificación de cualquier mes se puede calcular a partir de ellos, y almacenarla supondría guardar un dato redundante que podría contradecir a los pedidos. Esta decisión se basa en el supuesto de que el criterio de cálculo es fijo, que recogemos como restricción semántica; si no lo fuera, la opción adecuada sería la entidad débil Bonificación.
-
-**Todos los clientes, con herencia.** El profesor nos indicó que debían aparecer todos los clientes, y que la pertenencia al programa no se representa con un atributo, sino con una jerarquía. Creamos la entidad general **Cliente** con los subtipos **Básico** y **Plus**, en una jerarquía **total y exclusiva**: todo cliente es de uno de los dos tipos, y no puede ser de ambos a la vez. La fecha de ingreso y las bonificaciones quedan en Plus, y la relación Hace pasa a salir de Cliente para registrar las ventas de todos los clientes.
-
-**Pedidos conectados con los productos.** El profesor nos explicó que debíamos pensar en qué modelo sería más beneficioso para la empresa, y que lo mejor era tener todo conectado para saber de dónde salen los productos. Añadimos dos relaciones a Pedido:
-
-- **De**, entre Pedido y Producto (N:M), con el atributo `cantidad`, para saber qué productos y cuántas unidades incluye cada pedido.
-- **En**, entre Pedido y Zona (1:N), para saber desde dónde se sirve cada pedido.
-
-Valoramos conectar el pedido con el vivero, pero elegimos la zona porque el stock se controla por zonas, y así se puede relacionar cada venta con el stock disponible en el lugar del que sale. El vivero se obtiene a partir de la zona. Antes de esto también valoramos deducirlo del destino del empleado responsable en la fecha del pedido, pero lo descartamos por ser una deducción indirecta y poco fiable: el empleado podría gestionar un pedido que se sirve desde otro lugar.
-
-Como consecuencia, el `precio` pasó de Pedido a Producto, como precio por unidad, y el importe total del pedido dejó de guardarse, porque se obtiene a partir de los productos, sus cantidades y sus precios.
-
-**Productividad.** La productividad de zonas y empleados se obtiene combinando la relación Tarea (en qué zona estaba cada empleado y cuándo) con los pedidos que gestiona cada empleado y sus fechas. En el caso del empleado la representamos como **atributo derivado** `productividad`, ya que no se almacena, sino que se calcula a partir de esa información.
+- **Todos los clientes, con herencia.** La pertenencia al programa se representa con una jerarquía **total y exclusiva**: Cliente con los subtipos **Básico** y **Plus**. La fecha de ingreso y las bonificaciones quedan en Plus, y Hace sale de Cliente para registrar las ventas de todos.
+- **Pedidos conectados con productos.** Para saber de dónde salen los productos añadimos **De** (Pedido–Producto, N:M, con `cantidad`) y **En** (Pedido–Zona, 1:N). Elegimos la zona en lugar del vivero porque el stock se controla por zonas, y descartamos deducirla del destino del empleado por ser poco fiable. El `precio` pasó a Producto y el importe del pedido dejó de guardarse, porque se calcula.
+- **Bonificaciones como atributo derivado.** Con el multivaluado se perdía el mes. Valoramos un multivaluado compuesto, una entidad débil Bonificación o un derivado, y elegimos el **derivado**: dependen del volumen de compras mensual, que se calcula a partir de los pedidos. Lo apoyamos en el supuesto de que el criterio de cálculo es fijo (ver restricciones semánticas).
+- **Productividad.** Se obtiene combinando Tarea con los pedidos gestionados y sus fechas; en Empleado la representamos como atributo derivado.
 
 ---
 
