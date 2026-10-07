@@ -4,6 +4,12 @@
 
 ![Modelo entidad/relación](Practica2ADBD.drawio.png)
 
+
+# Modificacion
+
+![Modelo entidad/relación](Practica2ADBDMODIFICACION.drawio.png)
+
+
 # Descripción del modelo
 
 ## Entidades
