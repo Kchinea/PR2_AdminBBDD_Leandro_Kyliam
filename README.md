@@ -112,7 +112,7 @@ Indica a qué vivero pertenece cada zona.
 Representa el stock: qué productos hay en cada zona y en qué cantidad. Su atributo `cantidad` depende de la combinación de zona y producto, ya que un mismo producto puede tener cantidades distintas en cada zona.
 
 - Un producto está asignado como mínimo a 1 zona y como máximo a varias → **(1,n)** junto a Zona.
-- Una zona contiene como mínimo 1 producto y como máximo varios → **(1,n)** junto a Producto.
+- Una zona contiene como mínimo 0 productos y como máximo varios → **(0,n)** junto a Producto.
 - Cardinalidad **N:M**.
 
 ### Tarea (Empleado – Zona) · N:M
