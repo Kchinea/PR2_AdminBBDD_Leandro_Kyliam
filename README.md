@@ -7,7 +7,7 @@
 
 # Modificacion
 
-![Modelo entidad/relación](Practica2ADBDMODIFICACION.drawio.png)
+![Modelo entidad/relación](Practica2ADBDMODIFCICACION.drawio.png)
 
 
 # Descripción del modelo
